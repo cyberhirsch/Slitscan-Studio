@@ -1,0 +1,13 @@
+# dependencies / build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# editor / OS
+.DS_Store
+Thumbs.db
+*.local
+
+# large / local assets — not committed
+public/sample.mp4
+public/models/*.onnx
