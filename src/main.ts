@@ -1,6 +1,6 @@
 import "./style.css";
 import { Source, Recipe, listInterpolators, targetWidth, interpRatio } from "./types";
-import { SyntheticFrameSource, VideoFrameSource } from "./decode";
+import { VideoFrameSource } from "./decode";
 import { renderRotatedFrame, rotatedDims, buildSlitScan, isNeuralEngine, interpolateSequence, InterpSequence } from "./pipeline";
 
 const ASPECTS = ["16:9", "3:2", "4:3", "1:1", "9:16", "free"];
@@ -17,7 +17,7 @@ function defaultRecipe(id: string, frameCount: number): Recipe {
   };
 }
 
-function sourceFromFrameSource(id: string, name: string, kind: Source["kind"], fsrc: SyntheticFrameSource | VideoFrameSource): Source {
+function sourceFromFrameSource(id: string, name: string, kind: Source["kind"], fsrc: VideoFrameSource): Source {
   return {
     id, name, kind,
     meta: { width: fsrc.width, height: fsrc.height, frameCount: fsrc.frameCount, fps: fsrc.fps, hasGyro: false },
@@ -26,11 +26,9 @@ function sourceFromFrameSource(id: string, name: string, kind: Source["kind"], f
   };
 }
 
-const SOURCES: Source[] = [
-  sourceFromFrameSource("demo", "demo_synthetic", "video", new SyntheticFrameSource()),
-];
+const SOURCES: Source[] = [];
 
-let activeId = SOURCES[0].id;
+let activeId = SOURCES[0]?.id ?? "";
 let viewMode: "list" | "grid" = "grid";
 let curFrame = 0;
 let busy = false;
@@ -51,6 +49,7 @@ function glyphFor(k: Source["kind"]): string {
 // ---- render ----------------------------------------------------------------
 function render(): void {
   const s = active();
+  if (!s) { renderEmpty(); return; }
   const r = activeRecipe();
   const af = r.outFrame - r.inFrame + 1;
   const [W0, H] = rotatedDims(s.meta.width, s.meta.height, r.rotateDeg);
@@ -170,6 +169,38 @@ function render(): void {
   bind();
   void drawPreview();
   if (viewMode === "grid") void drawThumbs();
+}
+
+function renderEmpty(): void {
+  app.innerHTML = `
+    <header class="hdr">
+      <span class="brand">SLITSCAN STUDIO</span>
+      <nav class="nav">
+        <button class="active">GALLERY</button>
+        <button data-act="import">IMPORT</button>
+      </nav>
+      <span class="spacer"></span>
+    </header>
+    <div class="main">
+      <section class="panel preview" style="grid-column:1 / -1;border-right:none;">
+        <div class="panel-title"><span>[ source / preview ]</span></div>
+        <div class="panel-body" style="display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;color:var(--fg-dim);">
+            <div style="font-size:34px;color:var(--border);line-height:1;">⊹</div>
+            <p style="margin:10px 0 14px;">no source loaded</p>
+            <button data-act="import" class="primary"
+              style="background:transparent;border:1px solid var(--accent);color:var(--accent);font:inherit;padding:4px 16px;cursor:pointer;">
+              + import video
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <footer class="status"><span class="dot">●</span><span>ready — import a video to begin</span></footer>
+  `;
+  app.querySelectorAll<HTMLElement>('[data-act="import"]').forEach((el) =>
+    el.addEventListener("click", importVideo),
+  );
 }
 
 function setStatus(msg: string): void {
@@ -437,6 +468,7 @@ function showInterpDebug(seq: InterpSequence): void {
 // ---- keyboard --------------------------------------------------------------
 document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    if (SOURCES.length === 0) return;
     const i = SOURCES.findIndex((s) => s.id === activeId);
     const next = e.key === "ArrowDown" ? Math.min(SOURCES.length - 1, i + 1) : Math.max(0, i - 1);
     activeId = SOURCES[next].id;
@@ -453,6 +485,7 @@ render();
   try {
     const fsrc = await VideoFrameSource.fromUrl("/sample.mp4");
     SOURCES.push(sourceFromFrameSource("sample", "sample_4k60.mp4", "video", fsrc));
+    if (!active()) { activeId = "sample"; curFrame = 0; }
     render();
   } catch { /* no sample available */ }
 })();
