@@ -480,12 +480,19 @@ document.addEventListener("keydown", (e) => {
 
 render();
 
-// auto-load served sample footage (host/public/sample.mp4) if present
+// Auto-load a UHD sample clip so the app opens with real footage.
+// Prefer a local file (host/public/sample.mp4) for offline dev; otherwise
+// stream a CORS-enabled UHD clip from Pexels (2160×3840, 30fps).
+// Source: https://www.pexels.com/video/busy-urban-street-view-in-european-city-36725564/ (Pexels License)
+const SAMPLE_PEXELS_UHD = "https://videos.pexels.com/video-files/36725564/15564745_2160_3840_30fps.mp4";
 (async () => {
-  try {
-    const fsrc = await VideoFrameSource.fromUrl("/sample.mp4");
-    SOURCES.push(sourceFromFrameSource("sample", "sample_4k60.mp4", "video", fsrc));
-    if (!active()) { activeId = "sample"; curFrame = 0; }
-    render();
-  } catch { /* no sample available */ }
+  for (const [url, name] of [["/sample.mp4", "sample.mp4"], [SAMPLE_PEXELS_UHD, "pexels_urban_uhd.mp4"]] as const) {
+    try {
+      const fsrc = await VideoFrameSource.fromUrl(url);
+      SOURCES.push(sourceFromFrameSource("sample", name, "video", fsrc));
+      if (!active()) { activeId = "sample"; curFrame = 0; }
+      render();
+      return;
+    } catch { /* try next */ }
+  }
 })();
