@@ -1,49 +1,6 @@
 import { FrameSource } from "./types";
 
 // ---------------------------------------------------------------------------
-// SyntheticFrameSource — procedural footage so the whole pipeline runs without
-// importing a file. Horizontal motion + parallax so a vertical slit produces an
-// interesting slit-scan. Desaturated palette to match the TUI.
-// ---------------------------------------------------------------------------
-export class SyntheticFrameSource implements FrameSource {
-  readonly width = 1280;
-  readonly height = 720;
-  readonly frameCount = 180;
-  readonly fps = 30;
-
-  async drawFrame(index: number, ctx: CanvasRenderingContext2D, w: number, h: number): Promise<void> {
-    const t = index / this.frameCount; // 0..1
-    ctx.fillStyle = "#1b1e24";
-    ctx.fillRect(0, 0, w, h);
-
-    // scrolling vertical grating
-    const period = w / 14;
-    const shift = t * w * 1.2;
-    ctx.fillStyle = "#262b33";
-    for (let x = -period; x < w + period; x += period) {
-      const px = ((x + shift) % (w + period));
-      ctx.fillRect(px, 0, period * 0.5, h);
-    }
-
-    // parallax discs at different horizontal speeds
-    this.disc(ctx, ((t * 1.4) % 1) * w, h * 0.34, h * 0.10, "#7e978d");
-    this.disc(ctx, (1 - ((t * 0.6) % 1)) * w, h * 0.66, h * 0.14, "#9a8d75");
-
-    // a sharp foreground bar sweeping across
-    const bx = ((t * 2.1) % 1) * w;
-    ctx.fillStyle = "#cdd2d8";
-    ctx.fillRect(bx, h * 0.1, Math.max(3, w * 0.01), h * 0.8);
-  }
-
-  private disc(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string): void {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-// ---------------------------------------------------------------------------
 // VideoFrameSource — decode via <video> + seek/draw. No demuxer needed; works
 // for any format the browser plays. Frame access is by seeking to a frame's
 // mid-time. (WebCodecs + mp4box is the future precision/speed upgrade.)
